@@ -1,0 +1,24 @@
+GLM-5.2 Abliterated + NVFP4 KV — 4x DGX Spark serving recipe
+Copyright 2026 tonyd2wild
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This repository is a SERVING/OPERATIONS RECIPE. It contains no model weights and
+no model outputs — only configuration guidance, measurements, and documentation.
+
+Third-party components, not distributed here:
+
+- ORIGINAL ABLITERATION:  huihui-ai. The refusal-suppression of GLM-5.2 is
+                          huihui-ai's original work
+                          (huihui-ai/Huihui-GLM-5.2-abliterated-GGUF).
+- Weights served:         0xdfi/GLM-5.2-QuantTrio-Abliterated (HF, gated) — the
+                          transplant of huihui-ai's abliteration into the
+                          QuantTrio format. Refer to that repository for its
+                          license, gate terms, and "as-is" disclaimers.
+- Base checkpoint:        QuantTrio/GLM-5.2-Int4-Int8Mix.
+- NVFP4 KV lineage:       danielwoz/vllm-dspark-nvfp4 (Apache-2.0) — the
+                          nvfp4_ds_mla patch series our KV port adapts; Keys'
+                          NVFP4 image lineage; b12x CuTe e2m1 helpers.
+- sm_121 sparse-MLA:      CosmicRaisins/glm-5.2-gb10 (Apache-2.0), jasl/vllm.
+
+The 4-node serving stack this builds on is documented in the companion
+repositories listed in README.md, which credit their contributors.
