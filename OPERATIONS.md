@@ -43,9 +43,31 @@ docker logs <container> 2>&1 | grep -oE "'fuse_gemm_comms': (True|False)"
 # two hits: the first is what you asked for, the second is what you got
 ```
 
-**Untested idea:** setting `sp_min_token_num` explicitly should bypass the `None` and enable
-SP + async-TP. Async-TP overlaps GEMM with communication, which is the right shape for this
-workload (see §3). Nobody has tried it because the failure is silent. Not yet measured here.
+### Tested 2026-07-30: forcing it does not work either
+
+The obvious idea is to set `sp_min_token_num` explicitly and bypass the `None`. **That was
+tried and it fails.** Launched with:
+
+```
+--compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[6,12,18,24,30,36],
+  "pass_config":{"fuse_gemm_comms":true,"enable_sp":true,"sp_min_token_num":2048}}'
+```
+
+Verified present in the running container, weights loaded to 100%, then the engine died during
+worker initialisation:
+
+```
+RuntimeError: Worker failed with error 'Failed to send fd: No such file or directory'
+RuntimeError: Engine core initialization failed.
+```
+
+So on this stack `fuse_gemm_comms` is not merely inert — it is **unreachable**. vLLM's guard is
+load-bearing, and pushing past it breaks multiproc worker startup rather than enabling async-TP.
+
+**Practical consequence:** treat `fuse_gemm_comms: true` in this recipe as decorative. It costs
+nothing to leave in place (vLLM disables it cleanly) but it is not contributing to the published
+throughput, and there is no supported way to turn it on for GB10 without upstream adding a
+capability-12.1 entry to `SP_MIN_HIDDEN_SIZE`.
 
 ---
 
