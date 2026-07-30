@@ -66,6 +66,28 @@ as it falls from 6.00/100% to ~4.3/66% when the model reaches genuinely novel co
 arithmetic, verification). `tok/s = steps/s × acceptance` — the GPU is doing identical work
 throughout. Nothing to fix; no setting removes it.
 
+## Operations notes (verified 2026-07-30)
+
+See **[`OPERATIONS.md`](OPERATIONS.md)** for findings from a full audit of this deployment.
+Headlines:
+
+- **`fuse_gemm_comms` is inert on GB10** and always has been, including for the published 41.4
+  run. vLLM has no entry for device capability 12.1 in its sequence-parallelism threshold table,
+  so it silently resolves to `False`. The recipe lists it as a speed lever; it is not one here.
+- **The bottleneck is comm/weights, not attention.** Engine step rate is flat (7.6 -> 6.7 steps/s)
+  across a 125x increase in context, so cutting context or sharding KV for decode will not buy
+  speed. Only levers touching the 4-way all-reduce will.
+- **~30% cold-start penalty**, invisible in the logs, and it returns after the server goes idle.
+  Warm with several hundred-token generations before believing any number.
+- **Too small a `max_tokens` returns `content: None` with tokens billed** — the reasoning block
+  never closes. Looks like a garble symptom, isn't one.
+- **The NFS weight share is the fragile part**: when the mount drops the worker dies with
+  `HFValidationError` while the head hangs for 601s at distributed init. Verify weights are
+  visible on *every* worker before launching.
+- **How to prove the abliterated weights are actually loaded** (binary shard diff + behavioural
+  check) — `config.json` still says `name_or_path: tclf90/GLM-5.2-Int4-Int8Mix` and cannot be
+  trusted for provenance.
+
 ## Recipe
 
 Prerequisite: build the NVFP4 image + overlay per the
